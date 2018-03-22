@@ -1,4 +1,21 @@
-{
+"bcrypt": "^1.0.3",
+    "body-parser": "^1.18.2",
+    "connect-mongo": "^2.0.1",
+    "dotenv": "^4.0.0",
+    "express": "^4.16.2",
+    "express-session": "^1.15.6",
+    "jsonwebtoken": "^8.1.1",
+    "mongodb": "^2.2.34",
+    "mongoose": "^4.13.11",
+    "mosca": "^2.7.0",
+    "passport": "^0.4.0",
+    "passport-jwt": "^3.0.1",
+    "passport-local": "^1.0.0",
+    "promise": "^8.0.1"np,
+
+
+
+    {
   "name": "iot_sdcd_server",
   "version": "1.0.0",
   "description": "This is the backend server for the IoT SDCD server",
@@ -16,12 +33,12 @@
     "bcrypt": "^1.0.3",
     "body-parser": "^1.18.2",
     "connect-mongo": "^2.0.1",
-    "dotenv": "^5.0.0",
+    "dotenv": "^4.0.0",
     "express": "^4.16.2",
     "express-session": "^1.15.6",
     "jsonwebtoken": "^8.1.1",
-    "mongodb": "^3.0.2",
-    "mongoose": "^5.0.6",
+    "mongodb": "^2.2.34",
+    "mongoose": "^4.13.11",
     "mosca": "^2.7.0",
     "passport": "^0.4.0",
     "passport-jwt": "^3.0.1",
@@ -35,3 +52,4 @@
     "nodemon": "^1.15.1"
   }
 }
+npm 

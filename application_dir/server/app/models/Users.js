@@ -24,7 +24,7 @@ const nodeSchema = new Schema({
     devices : [deviceSchema]
 })
 
-nodeSchema.methods.addDevice = (name,type) =>{
+nodeSchema.methods.addDevice = function (name,type) {
     return new Promise((resolve, reject) => {
         this.devices.push({
             name:name,
@@ -58,7 +58,7 @@ userSchema.pre('save',function(next){
     })
 })
 
-userSchema.statics.authenticate = function(email,password){
+userSchema.statics.login = function(email,password){
     
     return new Promise((resolve, reject) => {
          this.findOne({'profile.email':email})
@@ -86,18 +86,31 @@ userSchema.statics.authenticate = function(email,password){
    
 }
 
-userSchema.methods.addNode = (name,devices) =>{
+userSchema.statics.authenticate = function(email){
+    return new Promise((resolve,reject)=>{
+        this.findOne({'profile.email': email}).exec()
+        .then( (user)=>{
+            if (!user) {
+                reject(new Error("User not found"))
+            }
+            resolve(user)
+        })
+    })
+  
+
+
+
+
+}
+
+userSchema.methods.addNode = function(name,devices){
     return new Promise((resolve, reject) => {
-        console.log('====================================');
-        console.log("asda");
-        console.log('====================================');
+       
       this.nodes.push({name:name})
       this.save()
         .then( (saved) =>{
-            console.log('====================================');
-            console.log("test");
-            console.log('====================================');
-            if(!devices || device ==null){
+            
+            if(!devices || devices ==null){
                 resolve(saved)
             }
             devices.forEach((element)=>{
@@ -112,10 +125,14 @@ userSchema.methods.addNode = (name,devices) =>{
         
 }
 
+userSchema.methods.findDevice = function(deviceId){
+
+}
 
 
 
 
-const User = mongoose.model('Users', userSchema,'Users')
-export default User
+
+const Users = mongoose.model('Users', userSchema,'Users')
+export default Users
 

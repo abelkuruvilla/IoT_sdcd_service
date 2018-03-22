@@ -33,7 +33,7 @@ export const createUser = (args) =>{
 export const login = (email,password)=>{
 
     return new Promise((resolve, reject) => {
-       Users.authenticate(email, password)
+       Users.login(email, password)
         .then(resolve)
         .catch(reject)
     })
@@ -41,5 +41,14 @@ export const login = (email,password)=>{
    
     
     
+}
+
+export const authUser = (email)=>{
+
+    return new Promise ((resolve,reject)=>{
+        Users.authenticate(email)
+        .then (resolve)
+        .catch(reject)
+    })
 }
 
