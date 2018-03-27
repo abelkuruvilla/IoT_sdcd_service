@@ -5,7 +5,7 @@ import {authenticate,authorizePublish,authorizeSubscribe} from './authorizer'
 export default (settings) =>{
     const server = new mosca.Server(settings,function(err){
         console.log('====================================');
-        console.log("Mosca con error" +err);
+        console.log("Mosca con error = " +err);
         console.log('====================================');
     })
 

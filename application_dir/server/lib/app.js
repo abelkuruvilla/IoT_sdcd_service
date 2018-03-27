@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import express from 'express'
 import {createUser,login,authUser} from '../app/server/User'
 import {addNode} from '../app/server/Nodes'
+import {getEncryptKey,getDecryptKey} from '../app/server/KTM'
 require('dotenv').config();
 mongoose.connect(process.env.MONGODB_URL)
 
@@ -62,9 +63,32 @@ app.get("/login",function(req,res){
 app.get("/add",function(req,res){
 
     authUser("abelk@gmail.com").then((resp)=>{
-        addNode(resp,"Trial1",[{name:"MQTTFX",type:"simulator"},{name:"MQQTfx",type:"simulator"}])
+        return addNode(resp,"Trial1",[{name:"MQTTFX",type:"simulator"},{name:"MQQTfx",type:"simulator"}])
     }).then((respr)=>{
         res.send(respr)
+    }).catch( (err)=>{res.send(err.message)})
+})
+
+app.get("/sendktm",function(req,res){
+    const topic = req.query.topic
+    const deviceId = req.query.deviceId || '5ab38259437af5970fca52e0'
+    getEncryptKey(topic,deviceId).then((resp)=>{
+        res.send(resp)
+    })
+    .catch((err)=>{
+        res.send(err.message)
+    })
+    //res.send(topic)
+
+})
+app.get("/getktm",function(req,res){
+    const topic = req.query.topic
+    const deviceId = req.query.deviceId
+    getDecryptKey(topic,deviceId).then( (resp)=>{
+        res.send(resp)
+    })
+    .catch((err)=>{
+        res.send(err.message)
     })
 })
 

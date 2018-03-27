@@ -106,17 +106,22 @@ userSchema.statics.authenticate = function(email){
 userSchema.methods.addNode = function(name,devices){
     return new Promise((resolve, reject) => {
        
-      this.nodes.push({name:name})
+      const newDevice = this.nodes.push({name:name}) -1
       this.save()
         .then( (saved) =>{
             
             if(!devices || devices ==null){
                 resolve(saved)
             }
+            console.log(saved.nodes[newDevice])
+            
             devices.forEach((element)=>{
-                saved.addDevice(element.name,element.type).catch(reject)
+                
+                saved.nodes[newDevice].addDevice(element.name,element.type)
+                    .then()
+                    .catch(reject)
             })
-            //resolve(saved)
+            resolve(saved)
 
         }).catch(reject)
     })
