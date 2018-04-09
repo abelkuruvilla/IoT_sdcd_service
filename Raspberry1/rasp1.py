@@ -12,12 +12,17 @@ from Crypto.Cipher import AES
 from Crypto import Random
 import hashlib
 import base64
+import binascii
+import psutil,os
+
+
+p = psutil.Process(os.getpid())
 
 client  = mqtt.Client("P1")
-serverIp = "192.168.1.100"
+serverIp = "192.168.1.101"
 serverPort = 1883
 webPort = 8000
-messageTopic = 'test/temp1'
+messageTopic = 'topics/temp'
 
 mySQLhost = "localhost"
 mySQLuser = "pi"
@@ -40,7 +45,10 @@ def getIp():
 
 def get_key_from_server(topic,device_id):
         parameter = {"topic":topic,"deviceId":device_id}
-        response = requests.get("http://"+serverIp+":"+str(webPort)+"/sendktm",params=parameter)
+        stri = "http://%s:%s/sendktm" % (serverIp, str(webPort))
+  
+        response = requests.get(stri,params=parameter)
+        
         data = response.json()
         return data['topic'],data['key']
 def save_to_cache(topic_details,key_details,type_renew='new'):
@@ -73,8 +81,6 @@ def check_ktm_cache(topic):
                 key_id = row['key_id']
                 cur.execute("SELECT * from KTM where keyId='%s'" %(key_id))
                 ktmrow = cur.fetchone()
-                print "Expired"
-                print (check_expired_key(ktmrow))
                 if (not check_expired_key(ktmrow)):
                         topic_details, key_details = get_key_from_server(topic, deviceId)
                         save_to_cache(topic_details, key_details,'renew')
@@ -88,47 +94,88 @@ def check_ktm_cache(topic):
 
 class AESCipher : 
         def __init__( self, key ):
-                self.key = hashlib.sha256(key).digest()
+                self.key = hashlib.sha256(key).hexdigest()[:32]
                 self.bs = 32
+                self.MODE = AES.MODE_CBC
+                self.SEGMENT_SIZE = 128
+                self.iv = 'This is an IV456'
 
-        def encrypt( self, raw ):
-                raw = self._pad(raw)
-                iv = Random.new().read( AES.block_size )
-                cipher = AES.new( self.key, AES.MODE_CBC, iv )
-                return base64.b64encode( iv + cipher.encrypt( raw ) )
+        def encrypt( self, plaintext ):
+                aes = AES.new(self.key, self.MODE, self.iv, segment_size=self.SEGMENT_SIZE)
+                plaintext = self._pad_string(plaintext)
+                encrypted_text = aes.encrypt(plaintext)
+                return binascii.b2a_hex(encrypted_text).rstrip()
 
-        def decrypt( self, enc ):
-                enc = base64.b64decode(enc)
-                iv = enc[:AES.block_size]
-                cipher = AES.new(self.key, AES.MODE_CBC, iv )
-                return self._unpad(cipher.decrypt( enc[AES.block_size:] ))
+        def decrypt( self, encrypted_text ):
+                aes = AES.new(self.key, self.MODE, self.iv, segment_size=self.SEGMENT_SIZE)
+                encrypted_text_bytes = binascii.a2b_hex(encrypted_text)
+                decrypted_text = aes.decrypt(encrypted_text_bytes)
+                decrypted_text = self._unpad_string(decrypted_text)
+                return decrypted_text
 
-        def _pad(self,s) :
-                return s + (self.bs - len(s) % self.bs) * chr(self.bs - len(s) % self.bs)
-        
-        def _unpad(self,s):
-                return s[0:-ord(s[-1])]
+        def _pad_string(self,value):
+                length = len(value)
+                pad_size = self.bs - (length % self.bs)
+                return value.ljust(length + pad_size, '\x00')
 
-topic_row , key_row =  check_ktm_cache("topics/temp")
+
+        def _unpad_string(self,value):
+                while value[-1] == '\x00':
+                        value = value[:-1]
+                return value
+
+topic_row , key_row =  check_ktm_cache(messageTopic)
 
 keyT = key_row['keyT']
 cipher = AESCipher(keyT)
 
 # enc = cipher.encrypt("myname is abel")
 # dnc = cipher.decrypt(enc)
+client.connect(serverIp, serverPort)
+
+time_before_getting_sensor_data = None
+time_after_sensor_data = None
+time_after_normalization = None
+time_after_encrypting = None
+time_of_publishing = None
+# while True:
+
+# time_before_getting_sensor_data = datetime.datetime.now()
+
+humidity, temperature = Adafruit_DHT.read_retry(11,4)
+
+time_after_sensor_data = datetime.datetime.now()
+print 'Sensing : Temp: {0:0.1f} C  Humidity: {1:0.1f} %'.format(temperature, humidity)
+#print 'Temperature: '+temp
+
+data = {'temperature':temperature,'humidity':humidity,'time':time_after_sensor_data.isoformat(' '),'deviceId':deviceId}
+# time_after_normalization = datetime.datetime.now()
+
+enc = cipher.encrypt(json.dumps(data))
+# time_after_encrypting = datetime.datetime.now()
+
+final_data = {'keyId' : key_row['keyId'] , 'data':enc }
+json_data = json.dumps(final_data)
+# json_data = json.dumps({'keyId': key_row['keyId'], 'data': data})
 
 
-while True:
-        humidity, temperature = Adafruit_DHT.read_retry(11,4)
-        print 'Sensing : Temp: {0:0.1f} C  Humidity: {1:0.1f} %'.format(temperature, humidity)
-        #print 'Temperature: '+temp
 
-        data = {'temperature':temperature,'humidity':humidity}
-        final_data = {'keyId' : key_row['keyId'] , 'data': cipher.encrypt(json.dumps(data))}
-        json_data = json.dumps(final_data)
+time_of_publishing = datetime.datetime.now()
+client.publish(messageTopic,json_data)
 
+print 'Published data to broker'
+# print('time differences:')
+# print('Before sensor data %s' %(time_before_getting_sensor_data.isoformat(' ')) )
+# print('After sensor data %s' %(time_after_sensor_data.isoformat(' ')) )
+# print('After normalization %s' %(time_after_normalization.isoformat(' ')) )
+# print('After encryption %s' %(time_after_encrypting.isoformat(' ')) )
+# print('At publishing %s' %(time_of_publishing.isoformat(' ')) )
+print('')
 
-        client.connect(serverIp,serverPort)
+print sys.getsizeof(json_data)
+print p.cpu_num()
+print p.cpu_percent()
+print p.cpu_times()
+print p.memory_full_info()
 
-        client.publish(messageTopic,json_data)
-        print 'Published data to broker'
+print('')

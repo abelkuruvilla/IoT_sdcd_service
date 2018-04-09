@@ -12,11 +12,17 @@ from Crypto.Cipher import AES
 from Crypto import Random
 import hashlib
 import base64
+import binascii
+import psutil,os
 
-broker_address = "192.168.1.100"
+
+
+p = psutil.Process(os.getpid())
+
+broker_address = "192.168.1.101"
 broker_port = "1883"
 webPort = 8000
-messageTopic = 'test/temp1'
+messageTopic = 'topics/temp'
 
 mySQLhost = "localhost"
 mySQLuser = "pi"
@@ -27,29 +33,43 @@ deviceId = "5ab38259437af5970fca34e4"
 db = MySQLdb.connect(mySQLhost, mySQLuser, mySQLpassword, mySQLdb)
 cur = db.cursor(MySQLdb.cursors.DictCursor)
 
+time_of_receiving_message = None
+time_retrieving_key = None
+time_after_decryption = None
+
+
 class AESCipher:
         def __init__(self, key):
-                self.key = hashlib.sha256(key).digest()
+                self.key = hashlib.sha256(key).hexdigest()[:32]
                 self.bs = 32
+                self.MODE = AES.MODE_CBC
+                self.SEGMENT_SIZE = 128
+                self.iv = 'This is an IV456'
 
-        def encrypt(self, raw):
-                raw = self._pad(raw)
-                iv = Random.new().read(AES.block_size)
-                cipher = AES.new(self.key, AES.MODE_CBC, iv)
-                return base64.b64encode(iv + cipher.encrypt(raw))
+        def encrypt(self, plaintext):
+                aes = AES.new(self.key, self.MODE, self.iv,
+                              segment_size=self.SEGMENT_SIZE)
+                plaintext = self._pad_string(plaintext)
+                encrypted_text = aes.encrypt(plaintext)
+                return binascii.b2a_hex(encrypted_text).rstrip()
 
-        def decrypt(self, enc):
-                enc = base64.b64decode(enc)
-                iv = enc[:AES.block_size]
-                cipher = AES.new(self.key, AES.MODE_CBC, iv)
-                return self._unpad(cipher.decrypt(enc[AES.block_size:]))
+        def decrypt(self, encrypted_text):
+                aes = AES.new(self.key, self.MODE, self.iv,
+                              segment_size=self.SEGMENT_SIZE)
+                encrypted_text_bytes = binascii.a2b_hex(encrypted_text)
+                decrypted_text = aes.decrypt(encrypted_text_bytes)
+                decrypted_text = self._unpad_string(decrypted_text)
+                return decrypted_text
 
-        def _pad(self, s):
-                return s + (self.bs - len(s) % self.bs) * chr(self.bs - len(s) % self.bs)
+        def _pad_string(self, value):
+                length = len(value)
+                pad_size = self.bs - (length % self.bs)
+                return value.ljust(length + pad_size, '\x00')
 
-        def _unpad(self, s):
-                return s[0:-ord(s[-1])]
-
+        def _unpad_string(self, value):
+                while value[-1] == '\x00':
+                        value = value[:-1]
+                return value
 
 def check_expired_key(ktmrow):
     expiry_date = ktmrow['val']
@@ -77,8 +97,6 @@ def save_to_cache(key_details):
 def getDecryptKey(keyId):
     cur.execute("SELECT * from KTM where keyId='%s'" %(keyId))
     row = cur.fetchone()
-    print row
-    print check_expired_key(row)
     if (row is None) or  (check_expired_key(row) is False):
         key_details = get_decrypt_key_from_server(messageTopic,deviceId)
         save_to_cache(key_details)
@@ -90,18 +108,48 @@ def getDecryptKey(keyId):
 
 def parse_received_message(message):
     original = json.loads(message)
+
     keyId = original['keyId']
     key = getDecryptKey(keyId)
+    time_retrieving_key = datetime.datetime.now()
+
     cipher = AESCipher(key)
     decrypt_message = cipher.decrypt(original['data'])
-    return decrypt_message
+    time_after_decryption = datetime.datetime.now()
+
+    print('Time of retreiving key %s' %(time_retrieving_key.isoformat(' ')))
+    print('Time after decrypting message %s' %(time_after_decryption.isoformat(' ')))
+
+    return json.loads(decrypt_message)
 
 def on_message(client, userdata, msg):
     print("    ")
+    time_of_receiving_message = datetime.datetime.now()
     print("Message recieved ", str(msg.payload))
     print("Message topic=", msg.topic)
     message = parse_received_message(msg.payload)
+    
+
+    # time_send = parser.parse(message['time'] ) 
+    # msge = json.loads(msg.payload)
+    # time_send = parser.parse(msge['time'])
+
+
+    # time_difference = time_of_receiving_message - time_send
+    # print('Time of receiving message %s' %(time_of_receiving_message.isoformat(' ')))
+    
+    
+    # print('Travelling time %s' %(time_difference.total_seconds() ))
     print('Decrypted Message received= %s' %(message))
+    print('')
+
+    print sys.getsizeof(str(msg))
+    print sys.getsizeof(message)
+    print p.cpu_num()
+    print p.cpu_percent()
+    print p.cpu_times()
+    print p.memory_full_info()
+    print('')
         
 
 

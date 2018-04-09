@@ -1,5 +1,6 @@
 import mosca from 'mosca'
 import {authenticate,authorizePublish,authorizeSubscribe} from './authorizer'
+import {addToDatabase} from './storage'
 
 
 export default (settings) =>{
@@ -23,7 +24,13 @@ export default (settings) =>{
             return;
         console.log('====================================');
         console.log("Published data:"+packet.payload.toString()+" topic:"+packet.topic);
+        addToDatabase(packet)
+            .then((result)=>{
+                console.log(result)
+            })
+            .catch(err=> console.log(err.message))
         console.log('====================================');
+
     })
 
     // server.on('clientConnected',function(client){

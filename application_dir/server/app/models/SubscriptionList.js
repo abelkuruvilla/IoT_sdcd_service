@@ -18,7 +18,8 @@ const subscriptionSchema = new Schema({
 
 subscriptionSchema.statics.verifyDeviceSubscription = function(topicId, deviceId){
     return new Promise((resolve,reject)=>{
-        this.findOne({'sublist.topics':topicId})
+        // Edited device id finding
+        this.findOne({'sublist.topics':topicId},{'sublist':{$elemMatch:{'node':deviceId } }})
             .exec().then((user)=>{
                 if(!user)
                     reject(new Error("Node not authorized1"))

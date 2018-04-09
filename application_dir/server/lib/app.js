@@ -71,7 +71,7 @@ app.get("/add",function(req,res){
 
 app.get("/sendktm",function(req,res){
     const topic = req.query.topic
-    const deviceId = req.query.deviceId || '5ab38259437af5970fca52e0'
+    const deviceId = req.query.deviceId 
     getEncryptKey(topic,deviceId).then((resp)=>{
         res.send(resp)
     })
@@ -83,7 +83,7 @@ app.get("/sendktm",function(req,res){
 })
 app.get("/getktm",function(req,res){
     const topic = req.query.topic
-    const deviceId = req.query.deviceId
+    const deviceId = req.query.deviceId || '5ab38259437af5970fca52e0'
     getDecryptKey(topic,deviceId).then( (resp)=>{
         res.send(resp)
     })

@@ -1,5 +1,15 @@
+import mongoose from 'mongoose'
 require('dotenv').config();
 import server from '../app/broker/index'
+mongoose.connect(process.env.MONGODB_URL)
+
+const db = mongoose.connection
+db.on('error', function (err) {
+    console.log("DB Conn error");
+})
+db.once('open', function () {
+    console.log("Connnected");
+})
 
 const ascoltatore = {
     type:'mongo',
