@@ -1,1 +1,3 @@
-IoT_sdcd_service
+#IoT_sdcd_service
+
+This project aims at creating a **Sensor Data Collection (SDC)** cloud service platform and to distribute this data in real-time data to IoT devices working across different locations. Instead of the conventional REST architecture, the proposed platform uses a publish-subscribe based lightweight messaging protocol called *Message Queue Telemetry Transport (MQTT)* protocol to supports reliable messaging over unreliable networks. The platform will use a NoSQL database to store unstructured data efficiently. An access point is also given for the collected data for doing data analytics by the user via any of his trusted third party applications. Thus a system is to be developed which can collect data from multiple sensors and also distribute this data in an IoT network.
